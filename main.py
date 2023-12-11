@@ -79,6 +79,11 @@ def get_senate_members():
     return response
 
 
+def get_house_members():
+    response = requests.get(f"{API_URL}/house/members.json", headers=headers)
+    return response
+
+
 def print_response(response):
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
@@ -89,15 +94,7 @@ def print_response(response):
         print(f"Error: {response.status_code}")
 
 
-
-def main():
-    conn = sqlite3.connect(DB_FILE)
-    # Create a cursor object to execute SQL queries
-    cursor = conn.cursor()
-    create_congress_table(cursor)
-
-    response = get_senate_members()
-
+def add_members_to_db(response, conn):
     if response.status_code != 200:
         # Print an error message if the request was not successful
         print(f"Error: {response.status_code}")
@@ -115,8 +112,22 @@ def main():
     # Insert or replace data into the existing table using Pandas to_sql
     df.to_sql("congress", conn, if_exists="replace", index=False)
 
+
+def main():
+    conn = sqlite3.connect(DB_FILE)
+    # Create a cursor object to execute SQL queries
+    cursor = conn.cursor()
+    create_congress_table(cursor)
+
+    response = get_senate_members()
+    add_members_to_db(response, conn)
+
+    response = get_house_members()
+    add_members_to_db(response, conn)
+
     # Close the connection
     conn.close()
+
 
 if __name__ == "__main__":
     main()
