@@ -3,6 +3,7 @@ import sqlite3
 from dotenv import load_dotenv
 import os
 import json
+import pandas as pd
 from datetime import datetime
 
 # Load environment variables from .env file
@@ -17,8 +18,6 @@ if API_KEY is None:
 headers = {
     "X-API-Key": API_KEY,
 }
-
-
 
 
 def create_congress_table(cursor):
@@ -90,43 +89,34 @@ def print_response(response):
         print(f"Error: {response.status_code}")
 
 
-def save_member_into_db(member_data, cursor):
-    # Insert data into the table
-    keys = ", ".join(member_data.keys())
-    values = ", ".join(["?" for _ in member_data])
-
-    insert_query = f'''
-        INSERT OR IGNORE INTO congress ({keys})
-        VALUES ({values})
-    '''
-
-    # Convert boolean value to integer for SQLite
-    member_data["in_office"] = int(member_data["in_office"])
-
-    # Extract values from the dictionary in the same order as the keys
-    data = [member_data[key] for key in member_data]
-
-    cursor.execute(insert_query, data)
-
 
 def main():
     conn = sqlite3.connect(DB_FILE)
     # Create a cursor object to execute SQL queries
     cursor = conn.cursor()
     create_congress_table(cursor)
+
     response = get_senate_members()
+
     if response.status_code != 200:
-        # Handle the error appropriately
+        # Print an error message if the request was not successful
         print(f"Error: {response.status_code}")
         return None
-    response = response.json()
-    for member in response['results'][0]['members']:
-        print(member)
-        save_member_into_db(member, cursor)
-    # Commit the changes and close the connection
-    conn.commit()
-    conn.close()
 
+    # Convert the JSON response to a Python dictionary
+    api_data = response.json()
+
+    # Extract the relevant data from the outer layers
+    members = api_data.get('results', [])[0].get('members', [])
+
+    # Create a Pandas DataFrame from the extracted data
+    df = pd.DataFrame(members)
+
+    # Insert or replace data into the existing table using Pandas to_sql
+    df.to_sql("congress", conn, if_exists="replace", index=False)
+
+    # Close the connection
+    conn.close()
 
 if __name__ == "__main__":
     main()
