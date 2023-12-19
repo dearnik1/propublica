@@ -18,11 +18,14 @@ headers = {
 
 def get_senate_members():
     response = requests.get(f"{API_URL}/senate/members.json", headers=headers)
+    print_response(response)
     return get_members_list_from_json_response(response)
 
 
 def get_house_members():
     response = requests.get(f"{API_URL}/house/members.json", headers=headers)
+    print_response(response)
+
     return get_members_list_from_json_response(response)
 
 
